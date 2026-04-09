@@ -238,11 +238,10 @@ class KnowledgeControlSystem:
         if not birth_date or not birth_date.strip():
             return False, "Дата рождения не может быть пустой"
         
-        # Валидация даты
-        try:
-            datetime.strptime(birth_date.strip(), '%Y-%m-%d')
-        except ValueError:
-            return False, "Неверный формат даты. Используйте ГГГГ-ММ-ДД"
+        # Валидация даты с проверкой реалистичности
+        validation_result = self.validate_birth_date(birth_date.strip())
+        if not validation_result[0]:
+            return False, validation_result[1]
         
         try:
             self.cursor.execute('''
@@ -256,6 +255,51 @@ class KnowledgeControlSystem:
         except sqlite3.Error as e:
             self.conn.rollback()
             return False, f"Ошибка добавления студента: {e}"
+    
+    def validate_birth_date(self, birth_date: str) -> Tuple[bool, str]:
+        """
+        Валидация даты рождения на реалистичность.
+        
+        Args:
+            birth_date: Дата рождения в формате ГГГГ-ММ-ДД
+            
+        Returns:
+            Кортеж (успех, сообщение)
+        """
+        try:
+            date_obj = datetime.strptime(birth_date, '%Y-%m-%d')
+        except ValueError:
+            return False, "Неверный формат даты. Используйте ГГГГ-ММ-ДД"
+        
+        year = date_obj.year
+        month = date_obj.month
+        day = date_obj.day
+        
+        # Проверка диапазона года (1900-2026)
+        if year < 1900 or year > 2026:
+            return False, f"Год должен быть в диапазоне от 1900 до 2026 (указан: {year})"
+        
+        # Проверка диапазона месяца (01-12)
+        if month < 1 or month > 12:
+            return False, f"Месяц должен быть в диапазоне от 01 до 12 (указан: {month})"
+        
+        # Проверка дня в зависимости от месяца
+        days_in_month = {
+            1: 31, 2: 28, 3: 31, 4: 30, 5: 31, 6: 30,
+            7: 31, 8: 31, 9: 30, 10: 31, 11: 30, 12: 31
+        }
+        
+        # Проверка високосного года для февраля
+        if month == 2:
+            is_leap = (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0)
+            max_day = 29 if is_leap else 28
+        else:
+            max_day = days_in_month[month]
+        
+        if day < 1 or day > max_day:
+            return False, f"День должен быть в диапазоне от 01 до {max_day} для месяца {month} (указан: {day})"
+        
+        return True, "Дата корректна"
     
     def get_student(self, student_id: int) -> Optional[Dict[str, Any]]:
         """
@@ -296,7 +340,7 @@ class KnowledgeControlSystem:
     
     def search_students_by_name(self, search_term: str) -> List[Dict[str, Any]]:
         """
-        Поиск учащихся по фамилии или имени.
+        Поиск учащихся по фамилии или имени (регистронезависимый).
         
         Args:
             search_term: Поисковый запрос
@@ -305,12 +349,14 @@ class KnowledgeControlSystem:
             Список найденных учащихся
         """
         try:
-            search_pattern = f"%{search_term.strip()}%"
+            # Приводим поисковый запрос к нижнему регистру для регистронезависимого поиска
+            search_term_lower = search_term.strip().lower()
+            search_pattern = f"%{search_term_lower}%"
             self.cursor.execute('''
                 SELECT student_id, first_name, last_name, patronymic, group_name, birth_date
                 FROM students 
-                WHERE last_name LIKE ? OR first_name LIKE ? OR 
-                      (patronymic LIKE ? AND patronymic IS NOT NULL)
+                WHERE LOWER(last_name) LIKE ? OR LOWER(first_name) LIKE ? OR 
+                      (LOWER(patronymic) LIKE ? AND patronymic IS NOT NULL)
                 ORDER BY last_name, first_name
             ''', (search_pattern, search_pattern, search_pattern))
             rows = self.cursor.fetchall()
@@ -483,6 +529,57 @@ class KnowledgeControlSystem:
             self.conn.rollback()
             return False, f"Ошибка удаления вопроса: {e}"
     
+    def update_question(self, subject_id: int, question_id: int, question_number: int,
+                        question_text: str, variant_a: str, variant_b: str, 
+                        variant_c: str, variant_d: str, correct_answer: str) -> Tuple[bool, str]:
+        """
+        Обновление вопроса.
+        
+        Args:
+            subject_id: ID предмета
+            question_id: ID вопроса
+            question_number: Номер вопроса
+            question_text: Текст вопроса
+            variant_a: Вариант ответа A
+            variant_b: Вариант ответа B
+            variant_c: Вариант ответа C
+            variant_d: Вариант ответа D
+            correct_answer: Правильный ответ ('A', 'B', 'C' или 'D')
+            
+        Returns:
+            Кортеж (успех, сообщение)
+        """
+        if not question_text or not question_text.strip():
+            return False, "Текст вопроса не может быть пустым"
+        if correct_answer not in ['A', 'B', 'C', 'D']:
+            return False, "Правильный ответ должен быть A, B, C или D"
+        
+        subject = self.get_subject_by_id(subject_id)
+        if not subject:
+            return False, "Предмет не найден"
+        
+        table_name = subject['table_name']
+        
+        try:
+            self.cursor.execute(f'''
+                UPDATE {table_name}
+                SET question_number = ?, question_text = ?, variant_a = ?, variant_b = ?,
+                    variant_c = ?, variant_d = ?, correct_answer = ?
+                WHERE question_id = ?
+            ''', (question_number, question_text.strip(), variant_a.strip(), variant_b.strip(),
+                  variant_c.strip(), variant_d.strip(), correct_answer, question_id))
+            
+            if self.cursor.rowcount == 0:
+                return False, "Вопрос не найден"
+            
+            self.conn.commit()
+            return True, "Вопрос успешно обновлён"
+        except sqlite3.IntegrityError:
+            return False, f"Вопрос с номером {question_number} уже существует"
+        except sqlite3.Error as e:
+            self.conn.rollback()
+            return False, f"Ошибка обновления вопроса: {e}"
+    
     # ==================== Методы работы с результатами ====================
     
     def save_result(self, student_id: int, subject_id: int, 
@@ -526,14 +623,16 @@ class KnowledgeControlSystem:
             student_id: ID учащегося
             
         Returns:
-            Список словарей с результатами
+            Список словарей с результатами (включая ФИО студента)
         """
         try:
             self.cursor.execute('''
-                SELECT r.result_id, r.student_id, r.subject_id, s.subject_name,
+                SELECT r.result_id, r.student_id, st.last_name, st.first_name, st.patronymic,
+                       r.subject_id, s.subject_name,
                        r.score, r.total_questions, r.percentage, r.test_date
                 FROM results r
                 JOIN subjects s ON r.subject_id = s.subject_id
+                JOIN students st ON r.student_id = st.student_id
                 WHERE r.student_id = ?
                 ORDER BY r.test_date DESC
             ''', (student_id,))

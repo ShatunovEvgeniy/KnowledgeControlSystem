@@ -231,8 +231,118 @@ class KnowledgeControlApp:
             self.update_questions_list()
     
     def on_question_select(self, event):
-        """Обработчик выбора вопроса."""
-        pass
+        """Обработчик выбора вопроса для редактирования."""
+        selection = self.questions_tree.selection()
+        if not selection or self.current_subject_id is None:
+            return
+        
+        item = self.questions_tree.item(selection[0])
+        question_number = item['values'][0]
+        
+        # Находим ID вопроса и полные данные
+        questions = self.system.get_questions_by_subject(self.current_subject_id)
+        selected_question = None
+        for q in questions:
+            if q['question_number'] == question_number:
+                selected_question = q
+                break
+        
+        if selected_question is None:
+            return
+        
+        # Открываем диалог редактирования
+        self.edit_question_dialog(selected_question)
+    
+    def edit_question_dialog(self, question: Dict[str, Any]):
+        """Диалоговое окно редактирования вопроса."""
+        dialog = tk.Toplevel(self.root)
+        dialog.title(f"Редактирование вопроса №{question['question_number']}")
+        dialog.geometry("700x500")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # Форма редактирования
+        main_frame = ttk.Frame(dialog, padding=20)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Номер вопроса
+        ttk.Label(main_frame, text="Номер вопроса:").grid(row=0, column=0, sticky=tk.W, pady=5)
+        question_number_entry = ttk.Entry(main_frame, width=10)
+        question_number_entry.grid(row=0, column=1, sticky=tk.W, padx=5)
+        question_number_entry.insert(0, str(question['question_number']))
+        
+        # Текст вопроса
+        ttk.Label(main_frame, text="Текст вопроса:").grid(row=1, column=0, sticky=tk.W, pady=5)
+        question_text_entry = ttk.Entry(main_frame, width=50)
+        question_text_entry.grid(row=1, column=1, columnspan=3, sticky=tk.EW, padx=5, pady=5)
+        question_text_entry.insert(0, question['question_text'])
+        
+        # Варианты ответов
+        ttk.Label(main_frame, text="Вариант A:").grid(row=2, column=0, sticky=tk.W, pady=5)
+        variant_a_entry = ttk.Entry(main_frame, width=40)
+        variant_a_entry.grid(row=2, column=1, columnspan=3, sticky=tk.EW, padx=5, pady=5)
+        variant_a_entry.insert(0, question['variant_a'])
+        
+        ttk.Label(main_frame, text="Вариант B:").grid(row=3, column=0, sticky=tk.W, pady=5)
+        variant_b_entry = ttk.Entry(main_frame, width=40)
+        variant_b_entry.grid(row=3, column=1, columnspan=3, sticky=tk.EW, padx=5, pady=5)
+        variant_b_entry.insert(0, question['variant_b'])
+        
+        ttk.Label(main_frame, text="Вариант C:").grid(row=4, column=0, sticky=tk.W, pady=5)
+        variant_c_entry = ttk.Entry(main_frame, width=40)
+        variant_c_entry.grid(row=4, column=1, columnspan=3, sticky=tk.EW, padx=5, pady=5)
+        variant_c_entry.insert(0, question['variant_c'])
+        
+        ttk.Label(main_frame, text="Вариант D:").grid(row=5, column=0, sticky=tk.W, pady=5)
+        variant_d_entry = ttk.Entry(main_frame, width=40)
+        variant_d_entry.grid(row=5, column=1, columnspan=3, sticky=tk.EW, padx=5, pady=5)
+        variant_d_entry.insert(0, question['variant_d'])
+        
+        # Правильный ответ
+        ttk.Label(main_frame, text="Правильный ответ:").grid(row=6, column=0, sticky=tk.W, pady=5)
+        correct_answer_var = tk.StringVar(value=question['correct_answer'])
+        answer_frame = ttk.Frame(main_frame)
+        answer_frame.grid(row=6, column=1, columnspan=3, sticky=tk.W, padx=5, pady=5)
+        ttk.Radiobutton(answer_frame, text="A", variable=correct_answer_var, value="A").pack(side=tk.LEFT, padx=5)
+        ttk.Radiobutton(answer_frame, text="B", variable=correct_answer_var, value="B").pack(side=tk.LEFT, padx=5)
+        ttk.Radiobutton(answer_frame, text="C", variable=correct_answer_var, value="C").pack(side=tk.LEFT, padx=5)
+        ttk.Radiobutton(answer_frame, text="D", variable=correct_answer_var, value="D").pack(side=tk.LEFT, padx=5)
+        
+        # Кнопки
+        btn_frame = ttk.Frame(main_frame)
+        btn_frame.grid(row=7, column=0, columnspan=4, pady=20)
+        
+        def save_changes():
+            try:
+                new_number = int(question_number_entry.get().strip())
+            except ValueError:
+                messagebox.showerror("Ошибка", "Номер вопроса должен быть числом!")
+                return
+            
+            success, message = self.system.update_question(
+                self.current_subject_id,
+                question['question_id'],
+                new_number,
+                question_text_entry.get().strip(),
+                variant_a_entry.get().strip(),
+                variant_b_entry.get().strip(),
+                variant_c_entry.get().strip(),
+                variant_d_entry.get().strip(),
+                correct_answer_var.get()
+            )
+            
+            if success:
+                messagebox.showinfo("Успех", message)
+                self.update_questions_list()
+                dialog.destroy()
+            else:
+                messagebox.showerror("Ошибка", message)
+        
+        ttk.Button(btn_frame, text="💾 Сохранить изменения", command=save_changes).pack(side=tk.LEFT, padx=10)
+        ttk.Button(btn_frame, text="❌ Отмена", command=dialog.destroy).pack(side=tk.LEFT, padx=10)
+        
+        # Конфигурация колонок
+        main_frame.columnconfigure(1, weight=1)
     
     def add_subject(self):
         """Добавление нового предмета."""
@@ -435,13 +545,15 @@ class KnowledgeControlApp:
         bottom_frame = ttk.LabelFrame(self.students_tab, text="Результаты тестирования", padding=10)
         bottom_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
-        r_columns = ('Предмет', 'Баллы', 'Всего', 'Процент', 'Дата')
+        r_columns = ('Студент', 'Предмет', 'Баллы', 'Всего', 'Процент', 'Дата')
         self.results_tree = ttk.Treeview(bottom_frame, columns=r_columns, show='headings', height=8)
+        self.results_tree.heading('Студент', text='ФИО студента')
         self.results_tree.heading('Предмет', text='Предмет')
         self.results_tree.heading('Баллы', text='Баллы')
         self.results_tree.heading('Всего', text='Всего вопросов')
         self.results_tree.heading('Процент', text='Процент')
         self.results_tree.heading('Дата', text='Дата теста')
+        self.results_tree.column('Студент', width=200)
         self.results_tree.column('Предмет', width=150)
         self.results_tree.column('Баллы', width=60)
         self.results_tree.column('Всего', width=80)
@@ -477,9 +589,16 @@ class KnowledgeControlApp:
         if student_id is None:
             return
         
+        # Получаем информацию о студенте для отображения
+        student = self.system.get_student(student_id)
+        student_name = ""
+        if student:
+            student_name = f"{student['last_name']} {student['first_name']} {student['patronymic'] or ''}".strip()
+        
         results = self.system.get_results_by_student(student_id)
         for result in results:
             self.results_tree.insert('', tk.END, values=(
+                student_name,  # Добавляем ФИО студента
                 result['subject_name'],
                 result['score'],
                 result['total_questions'],
