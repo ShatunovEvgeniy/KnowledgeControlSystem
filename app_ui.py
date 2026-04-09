@@ -512,7 +512,12 @@ class KnowledgeControlApp:
         edit_window.title(f"Редактирование вопроса №{question_number}")
         edit_window.geometry("650x450")
         edit_window.transient(self.root)
-        edit_window.grab_set()
+        
+        # Делаем окно модальным ПОСЛЕ того как оно создано и размещено
+        edit_window.update_idletasks()
+        edit_window.deiconify()  # Показываем окно
+        edit_window.focus_force()  # Переключаем фокус
+        edit_window.grab_set()  # Теперь устанавливаем захват
         
         # Поля для редактирования
         main_frame = ttk.LabelFrame(edit_window, text="Данные вопроса", padding=10)
@@ -832,7 +837,12 @@ class KnowledgeControlApp:
         edit_window.title(f"Редактирование студента: {student['last_name']} {student['first_name']}")
         edit_window.geometry("450x350")
         edit_window.transient(self.root)
-        edit_window.grab_set()
+        
+        # Делаем окно модальным ПОСЛЕ того как оно создано и размещено
+        edit_window.update_idletasks()
+        edit_window.deiconify()  # Показываем окно
+        edit_window.focus_force()  # Переключаем фокус
+        edit_window.grab_set()  # Теперь устанавливаем захват
         
         ttk.Label(edit_window, text="Фамилия:").grid(row=0, column=0, sticky=tk.W, pady=5, padx=10)
         last_name_entry = ttk.Entry(edit_window, width=35)
