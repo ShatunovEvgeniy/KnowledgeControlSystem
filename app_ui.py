@@ -263,7 +263,12 @@ class KnowledgeControlApp:
         dialog.title(f"Редактирование вопроса №{question['question_number']}")
         dialog.geometry("700x500")
         dialog.transient(self.root)
-        dialog.grab_set()
+        
+        # Делаем окно модальным ПОСЛЕ того как оно создано и размещено
+        dialog.update_idletasks()
+        dialog.deiconify()  # Показываем окно
+        dialog.focus_force()  # Переключаем фокус
+        dialog.grab_set()  # Теперь устанавливаем захват
         
         # Форма редактирования
         main_frame = ttk.Frame(dialog, padding=20)

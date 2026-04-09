@@ -341,6 +341,7 @@ class KnowledgeControlSystem:
     def search_students_by_name(self, search_term: str) -> List[Dict[str, Any]]:
         """
         Поиск учащихся по фамилии или имени (регистронезависимый).
+        Использует фильтрацию на стороне Python для корректной работы с кириллицей.
         
         Args:
             search_term: Поисковый запрос
@@ -349,18 +350,27 @@ class KnowledgeControlSystem:
             Список найденных учащихся
         """
         try:
-            # Приводим поисковый запрос к нижнему регистру для регистронезависимого поиска
-            search_term_lower = search_term.strip().lower()
-            search_pattern = f"%{search_term_lower}%"
+            # Получаем всех студентов и фильтруем на стороне Python
+            # Это необходимо т.к. SQLite не поддерживает LOWER() для кириллических символов
+            search_term = search_term.strip().lower()
+            
             self.cursor.execute('''
                 SELECT student_id, first_name, last_name, patronymic, group_name, birth_date
                 FROM students 
-                WHERE LOWER(last_name) LIKE ? OR LOWER(first_name) LIKE ? OR 
-                      (LOWER(patronymic) LIKE ? AND patronymic IS NOT NULL)
                 ORDER BY last_name, first_name
-            ''', (search_pattern, search_pattern, search_pattern))
+            ''')
             rows = self.cursor.fetchall()
-            return [dict(row) for row in rows]
+            all_students = [dict(row) for row in rows]
+            
+            # Фильтрация на стороне Python с использованием lower()
+            found_students = []
+            for student in all_students:
+                if (search_term in student['last_name'].lower() or 
+                    search_term in student['first_name'].lower() or 
+                    (student['patronymic'] and search_term in student['patronymic'].lower())):
+                    found_students.append(student)
+            
+            return found_students
         except sqlite3.Error as e:
             raise Exception(f"Ошибка поиска студентов: {e}")
     
