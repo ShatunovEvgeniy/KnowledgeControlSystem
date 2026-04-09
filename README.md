@@ -1,2 +1,226 @@
-# KnowledgeControlSystem
-Автоматизация процесса контроля знаний учащихся 
+# Система контроля знаний учащихся
+
+## Описание проекта
+
+Приложение для автоматизированного контроля знаний учащихся с использованием Python, SQLite и Tkinter. Система позволяет регистрировать предметы и тесты, добавлять и учитывать учащихся, проводить тестирование и анализировать результаты.
+
+## Возможности
+
+- **Управление предметами**: создание, просмотр и удаление учебных предметов
+- **Управление вопросами**: добавление вопросов с 4 вариантами ответов к каждому предмету
+- **Учёт учащихся**: регистрация студентов с указанием ФИО, группы и даты рождения
+- **Проведение тестирования**: интерактивное прохождение тестов с автоматическим подсчётом результатов
+- **Анализ результатов**: просмотр результатов тестирования по студентам и предметам
+
+## Установка и запуск
+
+### Требования
+
+- Python 3.7 или выше
+- tkinter (встроен в стандартную библиотеку Python)
+- sqlite3 (встроен в стандартную библиотеку Python)
+
+### Запуск приложения
+
+**Windows:**
+```bash
+python main.py
+```
+
+**Linux/macOS:**
+```bash
+python3 main.py
+```
+
+## Структура проекта
+
+```
+/workspace/
+├── main.py                 # Точка входа в приложение
+├── knowledgecontrol.py     # Модуль работы с базой данных и бизнес-логикой
+├── app_ui.py               # Модуль графического интерфейса
+├── requirements.txt        # Список зависимостей
+├── README.md               # Документация проекта
+└── knowledge_control.db    # База данных SQLite (создаётся автоматически)
+```
+
+## Описание модулей
+
+### knowledgecontrol.py
+
+Модуль содержит класс `KnowledgeControlSystem` для управления данными:
+
+#### Класс KnowledgeControlSystem
+
+**Методы работы с предметами:**
+- `create_tables()` - создаёт таблицы в базе данных
+- `add_subject(subject_name)` - добавляет новый предмет
+- `get_all_subjects()` - возвращает список всех предметов
+- `get_subject_by_id(subject_id)` - получает предмет по ID
+- `delete_subject(subject_id)` - удаляет предмет и связанные данные
+
+**Методы работы с учащимися:**
+- `add_student(first_name, last_name, group_name, birth_date, patronymic=None)` - добавляет студента
+- `get_student(student_id)` - получает информацию о студенте по ID
+- `get_all_students()` - возвращает список всех студентов
+- `search_students_by_name(search_term)` - поиск студентов по фамилии (регистронезависимый)
+- `delete_student(student_id)` - удаляет студента и его результаты
+- `update_student(student_id, first_name, last_name, group_name, birth_date, patronymic=None)` - обновляет данные студента
+- `validate_birth_date(birth_date)` - валидация даты рождения (диапазон года: 1900-2026, корректность дней в месяце)
+
+**Методы работы с вопросами:**
+- `add_question(subject_id, question_text, variant_a, variant_b, variant_c, variant_d, correct_answer, question_number=None)` - добавляет вопрос
+- `get_questions_by_subject(subject_id)` - получает все вопросы предмета
+- `get_question_by_id(subject_id, question_id)` - получает вопрос по ID
+- `delete_question(subject_id, question_id)` - удаляет вопрос
+- `update_question(subject_id, question_id, question_number, question_text, variant_a, variant_b, variant_c, variant_d, correct_answer)` - обновляет вопрос
+
+**Методы работы с результатами:**
+- `save_result(student_id, subject_id, score, total_questions)` - сохраняет результат теста
+- `get_results_by_student(student_id)` - получает результаты студента
+- `get_results_by_subject(subject_id)` - получает результаты по предмету
+- `has_student_taken_test(student_id, subject_id)` - проверяет, проходил ли студент тест
+- `get_statistics_by_subject(subject_id)` - получает статистику по предмету
+
+### app_ui.py
+
+Модуль содержит класс `KnowledgeControlApp` для создания графического интерфейса:
+
+#### Класс KnowledgeControlApp
+
+**Основные методы:**
+- `create_widgets()` - создаёт основные виджеты приложения
+- `setup_subjects_tab()` - настраивает вкладку предметов и вопросов
+- `setup_students_tab()` - настраивает вкладку учащихся и результатов
+- `setup_testing_tab()` - настраивает вкладку проведения тестирования
+- `update_subjects_list()` - обновляет список предметов
+- `update_questions_list()` - обновляет список вопросов
+- `update_students_list()` - обновляет список студентов
+- `update_results_list(student_id)` - обновляет список результатов (с отображением ФИО студента)
+- `add_subject()` - добавляет новый предмет
+- `add_student()` - добавляет нового студента
+- `add_question()` - добавляет новый вопрос
+- `edit_question()` - редактирует выбранный вопрос
+- `delete_question()` - удаляет выбранный вопрос
+- `edit_student()` - редактирует данные студента
+- `delete_student()` - удаляет выбранного студента
+- `start_test()` - начинает тестирование
+- `save_result()` - сохраняет результаты тестирования
+- `search_results_by_student()` - ищет результаты по студенту (регистронезависимый поиск)
+
+## Структура базы данных
+
+### Таблица students (учащиеся)
+```sql
+CREATE TABLE students (
+    student_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    patronymic TEXT,
+    group_name TEXT NOT NULL,
+    birth_date TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Таблица subjects (предметы)
+```sql
+CREATE TABLE subjects (
+    subject_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    subject_name TEXT UNIQUE NOT NULL,
+    table_name TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Таблица results (результаты)
+```sql
+CREATE TABLE results (
+    result_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id INTEGER NOT NULL,
+    subject_id INTEGER NOT NULL,
+    score INTEGER NOT NULL,
+    total_questions INTEGER NOT NULL,
+    percentage REAL NOT NULL,
+    test_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (student_id) REFERENCES students(student_id),
+    FOREIGN KEY (subject_id) REFERENCES subjects(subject_id)
+);
+```
+
+### Таблицы вопросов (создаются динамически)
+```sql
+CREATE TABLE questions_<subjectname> (
+    question_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    question_number INTEGER NOT NULL,
+    question_text TEXT NOT NULL,
+    variant_a TEXT NOT NULL,
+    variant_b TEXT NOT NULL,
+    variant_c TEXT NOT NULL,
+    variant_d TEXT NOT NULL,
+    correct_answer TEXT NOT NULL CHECK(correct_answer IN ('A', 'B', 'C', 'D')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+## Примеры использования
+
+### Добавление предмета
+
+1. Откройте вкладку "Предметы и вопросы"
+2. Введите название предмета (например, "Математика")
+3. Нажмите кнопку "Добавить предмет"
+
+### Добавление вопроса
+
+1. Выберите предмет из списка
+2. Заполните форму добавления вопроса:
+   - Номер вопроса
+   - Текст вопроса
+   - 4 варианта ответа (A, B, C, D)
+   - Выберите правильный ответ
+3. Нажмите "Добавить вопрос"
+
+### Добавление студента
+
+1. Откройте вкладку "Учащиеся и результаты"
+2. Заполните форму:
+   - Фамилия
+   - Имя
+   - Отчество (необязательно)
+   - Группа
+   - Дата рождения (формат ГГГГ-ММ-ДД)
+3. Нажмите "Добавить студента"
+
+### Проведение тестирования
+
+1. Откройте вкладку "Проведение тестирования"
+2. Нажмите "Обновить списки"
+3. Выберите студента и предмет
+4. Нажмите "Начать тестирование"
+5. Выберите ответы на вопросы
+6. Нажмите "Завершить тестирование"
+7. Просмотрите результат
+
+### Поиск результатов
+
+1. Откройте вкладку "Учащиеся и результаты"
+2. Введите фамилию студента в поле поиска
+3. Нажмите "Найти"
+4. Просмотрите результаты в таблице
+
+
+## Технические характеристики
+
+- **Язык программирования**: Python 3.7+
+- **База данных**: SQLite 3
+- **GUI фреймворк**: Tkinter
+- **Архитектура**: Клиент-серверная с локальным хранением данных
+
+## Лицензия
+
+Проект распространяется под лицензией MIT.
+
+## Контакты
+
+Для вопросов и предложений обращайтесь к разработчику.
