@@ -69,14 +69,17 @@ python3 main.py
 - `add_student(first_name, last_name, group_name, birth_date, patronymic=None)` - добавляет студента
 - `get_student(student_id)` - получает информацию о студенте по ID
 - `get_all_students()` - возвращает список всех студентов
-- `search_students_by_name(search_term)` - поиск студентов по фамилии
+- `search_students_by_name(search_term)` - поиск студентов по фамилии (регистронезависимый)
 - `delete_student(student_id)` - удаляет студента и его результаты
+- `update_student(student_id, first_name, last_name, group_name, birth_date, patronymic=None)` - обновляет данные студента
+- `validate_birth_date(birth_date)` - валидация даты рождения (диапазон года: 1900-2026, корректность дней в месяце)
 
 **Методы работы с вопросами:**
 - `add_question(subject_id, question_text, variant_a, variant_b, variant_c, variant_d, correct_answer, question_number=None)` - добавляет вопрос
 - `get_questions_by_subject(subject_id)` - получает все вопросы предмета
 - `get_question_by_id(subject_id, question_id)` - получает вопрос по ID
 - `delete_question(subject_id, question_id)` - удаляет вопрос
+- `update_question(subject_id, question_id, question_number, question_text, variant_a, variant_b, variant_c, variant_d, correct_answer)` - обновляет вопрос
 
 **Методы работы с результатами:**
 - `save_result(student_id, subject_id, score, total_questions)` - сохраняет результат теста
@@ -99,13 +102,17 @@ python3 main.py
 - `update_subjects_list()` - обновляет список предметов
 - `update_questions_list()` - обновляет список вопросов
 - `update_students_list()` - обновляет список студентов
-- `update_results_list(student_id)` - обновляет список результатов
+- `update_results_list(student_id)` - обновляет список результатов (с отображением ФИО студента)
 - `add_subject()` - добавляет новый предмет
 - `add_student()` - добавляет нового студента
 - `add_question()` - добавляет новый вопрос
+- `edit_question()` - редактирует выбранный вопрос
+- `delete_question()` - удаляет выбранный вопрос
+- `edit_student()` - редактирует данные студента
+- `delete_student()` - удаляет выбранного студента
 - `start_test()` - начинает тестирование
 - `save_result()` - сохраняет результаты тестирования
-- `search_results_by_student()` - ищет результаты по студенту
+- `search_results_by_student()` - ищет результаты по студенту (регистронезависимый поиск)
 
 ## Структура базы данных
 

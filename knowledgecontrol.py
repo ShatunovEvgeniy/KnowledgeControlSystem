@@ -391,6 +391,53 @@ class KnowledgeControlSystem:
             self.conn.rollback()
             return False, f"Ошибка удаления студента: {e}"
     
+    def update_student(self, student_id: int, first_name: str, last_name: str, 
+                       group_name: str, birth_date: str, patronymic: Optional[str] = None) -> Tuple[bool, str]:
+        """
+        Обновление данных учащегося.
+        
+        Args:
+            student_id: ID учащегося
+            first_name: Имя учащегося
+            last_name: Фамилия учащегося
+            group_name: Название группы
+            birth_date: Дата рождения (формат ГГГГ-ММ-ДД)
+            patronymic: Отчество (необязательно)
+            
+        Returns:
+            Кортеж (успех, сообщение)
+        """
+        if not first_name or not first_name.strip():
+            return False, "Имя не может быть пустым"
+        if not last_name or not last_name.strip():
+            return False, "Фамилия не может быть пустой"
+        if not group_name or not group_name.strip():
+            return False, "Группа не может быть пустой"
+        if not birth_date or not birth_date.strip():
+            return False, "Дата рождения не может быть пустой"
+        
+        # Валидация даты с проверкой реалистичности
+        validation_result = self.validate_birth_date(birth_date.strip())
+        if not validation_result[0]:
+            return False, validation_result[1]
+        
+        try:
+            self.cursor.execute('''
+                UPDATE students
+                SET first_name = ?, last_name = ?, patronymic = ?, group_name = ?, birth_date = ?
+                WHERE student_id = ?
+            ''', (first_name.strip(), last_name.strip(), patronymic.strip() if patronymic else None,
+                  group_name.strip(), birth_date.strip(), student_id))
+            
+            if self.cursor.rowcount == 0:
+                return False, "Студент не найден"
+            
+            self.conn.commit()
+            return True, f"Данные студента {last_name.strip()} {first_name.strip()} успешно обновлены"
+        except sqlite3.Error as e:
+            self.conn.rollback()
+            return False, f"Ошибка обновления данных студента: {e}"
+    
     # ==================== Методы работы с вопросами ====================
     
     def add_question(self, subject_id: int, question_text: str, 

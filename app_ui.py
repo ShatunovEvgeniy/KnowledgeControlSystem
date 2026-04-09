@@ -179,9 +179,13 @@ class KnowledgeControlApp:
         self.questions_tree.pack(fill=tk.BOTH, expand=True, pady=(5, 10))
         self.questions_tree.bind('<<TreeviewSelect>>', self.on_question_select)
         
-        # Кнопка удаления вопроса
-        ttk.Button(right_frame, text="🗑️ Удалить вопрос", 
-                   command=self.delete_question).pack(pady=5)
+        # Кнопки управления вопросами
+        question_buttons_frame = ttk.Frame(right_frame)
+        question_buttons_frame.pack(fill=tk.X, pady=(5, 10))
+        ttk.Button(question_buttons_frame, text="✏️ Редактировать", 
+                   command=self.edit_question).pack(side=tk.LEFT, padx=2)
+        ttk.Button(question_buttons_frame, text="🗑️ Удалить вопрос", 
+                   command=self.delete_question).pack(side=tk.LEFT, padx=2)
         
         # Статус бар
         self.subject_status_label = ttk.Label(self.subjects_tab, text="", style='Success.TLabel')
@@ -472,6 +476,121 @@ class KnowledgeControlApp:
             else:
                 messagebox.showerror("Ошибка", message)
     
+    def edit_question(self):
+        """Редактирование выбранного вопроса."""
+        if self.current_subject_id is None:
+            messagebox.showwarning("Предупреждение", "Выберите предмет!")
+            return
+        
+        selection = self.questions_tree.selection()
+        if not selection:
+            messagebox.showwarning("Предупреждение", "Выберите вопрос для редактирования!")
+            return
+        
+        item = self.questions_tree.item(selection[0])
+        question_number = item['values'][0]
+        
+        # Находим вопрос в базе
+        questions = self.system.get_questions_by_subject(self.current_subject_id)
+        question = None
+        for q in questions:
+            if q['question_number'] == question_number:
+                question = q
+                break
+        
+        if question is None:
+            messagebox.showerror("Ошибка", "Вопрос не найден!")
+            return
+        
+        # Создаем диалоговое окно для редактирования
+        edit_window = tk.Toplevel(self.root)
+        edit_window.title(f"Редактирование вопроса №{question_number}")
+        edit_window.geometry("650x450")
+        edit_window.transient(self.root)
+        edit_window.grab_set()
+        
+        # Поля для редактирования
+        main_frame = ttk.LabelFrame(edit_window, text="Данные вопроса", padding=10)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        ttk.Label(main_frame, text="Номер вопроса:").grid(row=0, column=0, sticky=tk.W, pady=5)
+        question_num_entry = ttk.Entry(main_frame, width=50)
+        question_num_entry.grid(row=0, column=1, pady=5)
+        question_num_entry.insert(0, question['question_number'])
+        
+        ttk.Label(main_frame, text="Текст вопроса:").grid(row=1, column=0, sticky=tk.W, pady=5)
+        question_text_entry = ttk.Entry(main_frame, width=50)
+        question_text_entry.grid(row=1, column=1, pady=5)
+        question_text_entry.insert(0, question['question_text'])
+        
+        ttk.Label(main_frame, text="Вариант A:").grid(row=2, column=0, sticky=tk.W, pady=5)
+        variant_a_entry = ttk.Entry(main_frame, width=50)
+        variant_a_entry.grid(row=2, column=1, pady=5)
+        variant_a_entry.insert(0, question['variant_a'])
+        
+        ttk.Label(main_frame, text="Вариант B:").grid(row=3, column=0, sticky=tk.W, pady=5)
+        variant_b_entry = ttk.Entry(main_frame, width=50)
+        variant_b_entry.grid(row=3, column=1, pady=5)
+        variant_b_entry.insert(0, question['variant_b'])
+        
+        ttk.Label(main_frame, text="Вариант C:").grid(row=4, column=0, sticky=tk.W, pady=5)
+        variant_c_entry = ttk.Entry(main_frame, width=50)
+        variant_c_entry.grid(row=4, column=1, pady=5)
+        variant_c_entry.insert(0, question['variant_c'])
+        
+        ttk.Label(main_frame, text="Вариант D:").grid(row=5, column=0, sticky=tk.W, pady=5)
+        variant_d_entry = ttk.Entry(main_frame, width=50)
+        variant_d_entry.grid(row=5, column=1, pady=5)
+        variant_d_entry.insert(0, question['variant_d'])
+        
+        ttk.Label(main_frame, text="Правильный ответ:").grid(row=6, column=0, sticky=tk.W, pady=5)
+        correct_answer_var = tk.StringVar(value=question['correct_answer'])
+        answer_frame = ttk.Frame(main_frame)
+        answer_frame.grid(row=6, column=1, sticky=tk.W, pady=5)
+        ttk.Radiobutton(answer_frame, text="A", variable=correct_answer_var, 
+                        value="A").pack(side=tk.LEFT, padx=5)
+        ttk.Radiobutton(answer_frame, text="B", variable=correct_answer_var, 
+                        value="B").pack(side=tk.LEFT, padx=5)
+        ttk.Radiobutton(answer_frame, text="C", variable=correct_answer_var, 
+                        value="C").pack(side=tk.LEFT, padx=5)
+        ttk.Radiobutton(answer_frame, text="D", variable=correct_answer_var, 
+                        value="D").pack(side=tk.LEFT, padx=5)
+        
+        def save_changes():
+            try:
+                new_question_number = int(question_num_entry.get().strip())
+            except ValueError:
+                messagebox.showerror("Ошибка", "Номер вопроса должен быть числом!")
+                return
+            
+            question_text = question_text_entry.get().strip()
+            variant_a = variant_a_entry.get().strip()
+            variant_b = variant_b_entry.get().strip()
+            variant_c = variant_c_entry.get().strip()
+            variant_d = variant_d_entry.get().strip()
+            correct_answer = correct_answer_var.get()
+            
+            if not question_text:
+                messagebox.showerror("Ошибка", "Текст вопроса не может быть пустым!")
+                return
+            
+            success, message = self.system.update_question(
+                self.current_subject_id, question['question_id'], new_question_number,
+                question_text, variant_a, variant_b, variant_c, variant_d, correct_answer
+            )
+            
+            if success:
+                messagebox.showinfo("Успех", message)
+                self.update_questions_list()
+                edit_window.destroy()
+            else:
+                messagebox.showerror("Ошибка", message)
+        
+        btn_frame = ttk.Frame(edit_window)
+        btn_frame.pack(pady=10)
+        ttk.Button(btn_frame, text="💾 Сохранить", command=save_changes).pack(side=tk.LEFT, padx=10)
+        ttk.Button(btn_frame, text="❌ Отмена", command=edit_window.destroy).pack(side=tk.LEFT, padx=10)
+    
     # ==================== Вкладка 2: Учащиеся и результаты ====================
     
     def setup_students_tab(self):
@@ -522,6 +641,14 @@ class KnowledgeControlApp:
                    command=self.search_results_by_student).pack(side=tk.LEFT)
         ttk.Button(search_frame, text="🔄 Сброс", 
                    command=self.reset_search).pack(side=tk.LEFT, padx=5)
+        
+        # Кнопки управления студентами
+        student_buttons_frame = ttk.Frame(right_frame)
+        student_buttons_frame.pack(fill=tk.X, pady=(0, 10))
+        ttk.Button(student_buttons_frame, text="✏️ Редактировать", 
+                   command=self.edit_student).pack(side=tk.LEFT, padx=2)
+        ttk.Button(student_buttons_frame, text="🗑️ Удалить", 
+                   command=self.delete_student).pack(side=tk.LEFT, padx=2)
         
         # Таблица студентов
         s_columns = ('ID', 'Фамилия', 'Имя', 'Отчество', 'Группа', 'Дата рождения')
@@ -678,6 +805,118 @@ class KnowledgeControlApp:
         self.search_student_entry.delete(0, tk.END)
         self.current_student_id = None
         self.update_results_list(None)
+    
+    def edit_student(self):
+        """Редактирование данных студента."""
+        selection = self.students_tree.selection()
+        if not selection:
+            messagebox.showwarning("Предупреждение", "Выберите студента для редактирования!")
+            return
+        
+        item = self.students_tree.item(selection[0])
+        student_id = item['values'][0]
+        
+        # Получаем текущие данные студента
+        student = self.system.get_student(student_id)
+        if not student:
+            messagebox.showerror("Ошибка", "Студент не найден!")
+            return
+        
+        # Создаем диалоговое окно для редактирования
+        edit_window = tk.Toplevel(self.root)
+        edit_window.title(f"Редактирование студента: {student['last_name']} {student['first_name']}")
+        edit_window.geometry("450x350")
+        edit_window.transient(self.root)
+        edit_window.grab_set()
+        
+        ttk.Label(edit_window, text="Фамилия:").grid(row=0, column=0, sticky=tk.W, pady=5, padx=10)
+        last_name_entry = ttk.Entry(edit_window, width=35)
+        last_name_entry.grid(row=0, column=1, pady=5, padx=10)
+        last_name_entry.insert(0, student['last_name'])
+        
+        ttk.Label(edit_window, text="Имя:").grid(row=1, column=0, sticky=tk.W, pady=5, padx=10)
+        first_name_entry = ttk.Entry(edit_window, width=35)
+        first_name_entry.grid(row=1, column=1, pady=5, padx=10)
+        first_name_entry.insert(0, student['first_name'])
+        
+        ttk.Label(edit_window, text="Отчество:").grid(row=2, column=0, sticky=tk.W, pady=5, padx=10)
+        patronymic_entry = ttk.Entry(edit_window, width=35)
+        patronymic_entry.grid(row=2, column=1, pady=5, padx=10)
+        patronymic_entry.insert(0, student['patronymic'] or '')
+        
+        ttk.Label(edit_window, text="Группа:").grid(row=3, column=0, sticky=tk.W, pady=5, padx=10)
+        group_entry = ttk.Entry(edit_window, width=35)
+        group_entry.grid(row=3, column=1, pady=5, padx=10)
+        group_entry.insert(0, student['group_name'])
+        
+        ttk.Label(edit_window, text="Дата рождения (ГГГГ-ММ-ДД):").grid(row=4, column=0, sticky=tk.W, pady=5, padx=10)
+        birth_date_entry = ttk.Entry(edit_window, width=35)
+        birth_date_entry.grid(row=4, column=1, pady=5, padx=10)
+        birth_date_entry.insert(0, student['birth_date'])
+        
+        def save_changes():
+            last_name = last_name_entry.get().strip()
+            first_name = first_name_entry.get().strip()
+            patronymic = patronymic_entry.get().strip()
+            group_name = group_entry.get().strip()
+            birth_date = birth_date_entry.get().strip()
+            
+            if not all([last_name, first_name, group_name, birth_date]):
+                messagebox.showwarning("Предупреждение", 
+                                       "Заполните все обязательные поля!\n"
+                                       "(Фамилия, Имя, Группа, Дата рождения)")
+                return
+            
+            success, message = self.system.update_student(
+                student_id, first_name, last_name, group_name, birth_date, patronymic
+            )
+            
+            if success:
+                messagebox.showinfo("Успех", message)
+                self.update_students_list()
+                # Обновляем результаты если они отображаются
+                if self.current_student_id == student_id:
+                    self.update_results_list(student_id)
+                edit_window.destroy()
+            else:
+                messagebox.showerror("Ошибка", message)
+        
+        btn_frame = ttk.Frame(edit_window)
+        btn_frame.grid(row=5, column=0, columnspan=2, pady=20)
+        ttk.Button(btn_frame, text="💾 Сохранить", command=save_changes).pack(side=tk.LEFT, padx=10)
+        ttk.Button(btn_frame, text="❌ Отмена", command=edit_window.destroy).pack(side=tk.LEFT, padx=10)
+    
+    def delete_student(self):
+        """Удаление студента."""
+        selection = self.students_tree.selection()
+        if not selection:
+            messagebox.showwarning("Предупреждение", "Выберите студента для удаления!")
+            return
+        
+        item = self.students_tree.item(selection[0])
+        student_id = item['values'][0]
+        student_name = f"{item['values'][1]} {item['values'][2]}"
+        
+        # Подтверждение удаления
+        confirm = messagebox.askyesno(
+            "Подтверждение удаления",
+            f"Вы действительно хотите удалить студента {student_name}?\n\n"
+            f"Все результаты тестирования этого студента также будут удалены.",
+            icon='warning'
+        )
+        
+        if not confirm:
+            return
+        
+        success, message = self.system.delete_student(student_id)
+        
+        if success:
+            messagebox.showinfo("Успех", message)
+            self.update_students_list()
+            self.current_student_id = None
+            self.update_results_list(None)
+        else:
+            messagebox.showerror("Ошибка", message)
     
     # ==================== Вкладка 3: Проведение тестирования ====================
     
